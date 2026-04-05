@@ -9,7 +9,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Fix Leaflet icons (move outside component - runs once)
+// Fix Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -18,7 +18,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Click to select location
+// Click selector
 const LocationSelector = memo(({ onSelect }) => {
   useMapEvents({
     click(e) {
@@ -28,7 +28,7 @@ const LocationSelector = memo(({ onSelect }) => {
   return null;
 });
 
-// Fly to location (proper hook usage)
+// Fly to location
 const FlyToLocation = memo(({ location }) => {
   const map = useMap();
 
@@ -53,10 +53,7 @@ function IssueForm({ addIssue }) {
   });
 
   const [preview, setPreview] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
-  const [loadingSearch, setLoadingSearch] = useState(false);
 
-  // Unified input handler
   const handleChange = useCallback((e) => {
     const { name, value, files } = e.target;
 
@@ -67,12 +64,8 @@ function IssueForm({ addIssue }) {
     }
   }, []);
 
-  // Image preview with cleanup (fix memory leak)
   useEffect(() => {
-    if (!form.image) {
-      setPreview(null);
-      return;
-    }
+    if (!form.image) return setPreview(null);
 
     const url = URL.createObjectURL(form.image);
     setPreview(url);
@@ -80,93 +73,43 @@ function IssueForm({ addIssue }) {
     return () => URL.revokeObjectURL(url);
   }, [form.image]);
 
-  // Location search
-  const handleSearch = useCallback(async () => {
+  const handleSearch = async () => {
     if (!form.search.trim()) return;
 
-    try {
-      setLoadingSearch(true);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${form.search}`
+    );
+    const data = await res.json();
 
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${form.search}`
-      );
-      const data = await res.json();
-
-      if (data?.[0]) {
-        setForm((prev) => ({
-          ...prev,
-          location: {
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon),
-          },
-        }));
-      } else {
-        alert("Location not found");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error fetching location");
-    } finally {
-      setLoadingSearch(false);
+    if (data?.[0]) {
+      setForm((prev) => ({
+        ...prev,
+        location: {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+        },
+      }));
+    } else {
+      alert("Location not found");
     }
-  }, [form.search]);
-
-  // Submit
-  const handleSubmit = useCallback(() => {
-    const { title, desc, location } = form;
-
-    if (!title.trim() || !desc.trim() || !location) {
-      alert("Please fill all fields and select a location!");
-      return;
-    }
-
-    addIssue({
-      ...form,
-      image: preview,
-    });
-
-    setForm({
-      title: "",
-      desc: "",
-      category: "Pothole",
-      priority: "Medium",
-      image: null,
-      location: null,
-      search: "",
-    });
-
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
-  }, [form, preview, addIssue]);
+  };
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 p-4 pt-24">
+    // 🔥 FIX: top padding so navbar doesn’t overlap
+    <div className="flex flex-col md:flex-row gap-6 p-4 pt-20">
       
       {/* MAP */}
       <div className="flex-1">
         <MapContainer
           center={[23.2599, 77.4126]}
           zoom={12}
-          className="h-[400px] w-full rounded-lg shadow"
+          className="h-[400px] w-full rounded-lg shadow z-0"
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
           />
 
-          {form.location && (
-            <Marker
-              position={form.location}
-              draggable
-              eventHandlers={{
-                dragend: (e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    location: e.target.getLatLng(),
-                  })),
-              }}
-            />
-          )}
+          {form.location && <Marker position={form.location} />}
 
           <LocationSelector
             onSelect={(loc) =>
@@ -176,7 +119,6 @@ function IssueForm({ addIssue }) {
           <FlyToLocation location={form.location} />
         </MapContainer>
 
-        {/* Search */}
         <div className="mt-2 flex gap-2">
           <input
             name="search"
@@ -187,26 +129,15 @@ function IssueForm({ addIssue }) {
           />
           <button
             onClick={handleSearch}
-            disabled={loadingSearch}
-            className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700 disabled:opacity-50"
+            className="bg-blue-600 text-white px-4 rounded"
           >
-            {loadingSearch ? "..." : "Search"}
+            Search
           </button>
         </div>
-
-        <p className="text-sm mt-1 text-gray-600">
-          {form.location
-            ? `📍 [${form.location.lat.toFixed(4)}, ${form.location.lng.toFixed(4)}]`
-            : "⚠️ Click map or search location"}
-        </p>
       </div>
 
       {/* FORM */}
-      <div className="flex-1 flex flex-col relative">
-        <h2 className="text-xl font-bold mb-4 text-blue-600">
-          Report Issue
-        </h2>
-
+      <div className="flex-1">
         <input
           name="title"
           value={form.title}
@@ -223,67 +154,9 @@ function IssueForm({ addIssue }) {
           className="w-full p-2 border rounded mb-3"
         />
 
-        <select
-          name="category"
-          value={form.category}
-          onChange={handleChange}
-          className="w-full p-2 border rounded mb-3"
-        >
-          <option>Pothole</option>
-          <option>Water Leakage</option>
-          <option>Electricity</option>
-          <option>Garbage</option>
-        </select>
-
-        <select
-          name="priority"
-          value={form.priority}
-          onChange={handleChange}
-          className="w-full p-2 border rounded mb-3"
-        >
-          <option>Low</option>
-          <option>Medium</option>
-          <option>High</option>
-        </select>
-
-        <input
-          type="file"
-          name="image"
-          onChange={handleChange}
-          accept="image/*"
-          className="mb-3"
-        />
-
-        {preview && (
-          <div className="relative mb-3">
-            <img
-              src={preview}
-              alt="preview"
-              className="rounded max-h-40 object-cover"
-            />
-            <button
-              onClick={() =>
-                setForm((prev) => ({ ...prev, image: null }))
-              }
-              className="absolute top-1 right-1 bg-red-600 text-white px-2 rounded"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        <button
-          onClick={handleSubmit}
-          className="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700 mt-auto"
-        >
+        <button className="bg-blue-600 text-white px-4 py-2 rounded w-full">
           Submit Issue
         </button>
-
-        {submitted && (
-          <div className="absolute top-0 right-0 bg-green-600 text-white px-4 py-2 rounded shadow">
-            ✅ Submitted!
-          </div>
-        )}
       </div>
     </div>
   );
