@@ -1,8 +1,8 @@
 import { memo } from "react";
 import Hero from "../components/Hero";
 import Features from "../components/Features";
-import Slider from "../components/Slider";
-import heroImage from "../assets/hero.png";
+import Slider from "../components/ProblemSlider";
+import heroImage from "../assets/Hero.png";
 
 function Home({ issues = [] }) {
   return (
