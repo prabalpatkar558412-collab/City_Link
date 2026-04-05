@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useCallback, memo } from "react";
 import { FiMenu, FiX } from "react-icons/fi";
 
-// Static nav items (avoid recreation)
 const NAV_ITEMS = [
   { name: "Home", path: "/" },
   { name: "Report", path: "/report" },
@@ -15,24 +14,29 @@ function Navbar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
-  const openMenu = useCallback(() => setOpen(true), []);
-  const closeMenu = useCallback(() => setOpen(false), []);
+  const toggleMenu = useCallback(() => {
+    setOpen((prev) => !prev);
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setOpen(false);
+  }, []);
 
   return (
-    <nav className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 shadow-xl sticky top-0 z-50 rounded-b-3xl flex items-center justify-between">
+    <nav className="sticky top-0 z-50 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl rounded-b-2xl flex items-center justify-between px-6">
       
       {/* Logo */}
       <Link to="/" aria-label="Go to home">
         <motion.h1
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="font-extrabold text-2xl tracking-wide"
+          className="font-extrabold text-xl md:text-2xl tracking-wide"
         >
           Civic Link
         </motion.h1>
       </Link>
 
-      {/* Desktop Links */}
+      {/* Desktop Nav */}
       <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 gap-8">
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path;
@@ -52,7 +56,7 @@ function Navbar() {
                 {isActive && (
                   <motion.div
                     layoutId="underline"
-                    className="absolute left-0 -bottom-1 h-1 w-full bg-yellow-300 rounded-full"
+                    className="absolute left-0 -bottom-1 h-[3px] w-full bg-yellow-300 rounded-full"
                   />
                 )}
               </motion.span>
@@ -61,69 +65,62 @@ function Navbar() {
         })}
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu Button */}
       <div className="md:hidden">
         <button
-          onClick={openMenu}
+          onClick={toggleMenu}
           className="text-3xl p-2 rounded-full hover:bg-white/20 transition"
-          aria-label="Open menu"
+          aria-label="Toggle menu"
         >
-          <FiMenu />
+          {open ? <FiX /> : <FiMenu />}
         </button>
-
-        <AnimatePresence>
-          {open && (
-            <>
-              {/* Overlay */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.5 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black z-40"
-                onClick={closeMenu}
-              />
-
-              {/* Sidebar */}
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", stiffness: 280, damping: 28 }}
-                className="fixed top-0 right-0 w-3/4 max-w-xs h-full bg-blue-700 shadow-lg z-50 flex flex-col gap-6 py-10 px-6"
-              >
-                {/* Close */}
-                <button
-                  onClick={closeMenu}
-                  className="self-end text-3xl mb-6 p-2 rounded-full hover:bg-white/20 transition"
-                  aria-label="Close menu"
-                >
-                  <FiX />
-                </button>
-
-                {/* Links */}
-                {NAV_ITEMS.map((item) => {
-                  const isActive = location.pathname === item.path;
-
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={closeMenu}
-                      className={`text-lg font-medium transition ${
-                        isActive
-                          ? "text-yellow-300"
-                          : "hover:text-yellow-200"
-                      }`}
-                    >
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
       </div>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black z-40"
+              onClick={closeMenu}
+            />
+
+            {/* Sidebar */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 260, damping: 25 }}
+              className="fixed top-0 right-0 w-3/4 max-w-xs h-full bg-indigo-700 z-50 flex flex-col px-6 py-8 gap-6 shadow-lg"
+            >
+              <h2 className="text-xl font-bold mb-4">Menu</h2>
+
+              {NAV_ITEMS.map((item) => {
+                const isActive = location.pathname === item.path;
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={closeMenu}
+                    className={`text-lg font-medium transition ${
+                      isActive
+                        ? "text-yellow-300"
+                        : "hover:text-yellow-200"
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }
